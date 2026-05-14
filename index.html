@@ -11,44 +11,67 @@
 
     <style>
         :root {
-            /* Updated UI colors to complement Sky Blue */
-            --bg-main: #e0f2fe; /* Light sky blue for the body */
-            --bg-panel: rgba(255, 255, 255, 0.9); /* Bright white panel */
-            --accent: #0ea5e9; /* Sky blue accent */
+            --bg-main: #e0f2fe; 
+            --bg-panel: rgba(255, 255, 255, 0.95);
+            --accent: #0ea5e9; 
             --success: #10b981;
             --warning: #f59e0b;
-            --text-main: #0f172a; /* Dark text for light background */
+            --danger: #ef4444;
+            --text-main: #0f172a; 
             --text-muted: #64748b;
             --border: #bae6fd;
         }
 
         body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+        
         #container3d { flex: 3; position: relative; }
-        .sidebar { flex: 1; max-width: 380px; background: var(--bg-panel); padding: 20px; border-left: 1px solid var(--border); overflow-y: auto; display: flex; flex-direction: column; box-shadow: -5px 0 15px rgba(0,0,0,0.05); }
+        
+        .sidebar { 
+            flex: 1; 
+            max-width: 380px; 
+            background: var(--bg-panel); 
+            padding: 20px; 
+            border-left: 1px solid var(--border); 
+            overflow-y: auto; 
+            display: flex; 
+            flex-direction: column; 
+            box-shadow: -5px 0 15px rgba(0,0,0,0.05); 
+        }
+
         h2 { font-size: 0.85em; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        
         .step-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+        
         .step-btn {
             display: flex; align-items: center; width: 100%; padding: 10px 15px; 
             background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px; 
             color: var(--text-main); cursor: pointer; transition: 0.2s; text-align: left; font-size: 0.9em;
         }
+
         .step-number {
             display: inline-flex; justify-content: center; align-items: center; 
             min-width: 22px; height: 22px; background: #cbd5e1; border-radius: 50%; 
             margin-right: 12px; font-size: 0.75em; font-weight: bold;
         }
-        .step-btn.ready { border-color: var(--accent); background: rgba(14, 165, 233, 0.1); }
+
+        .step-btn.ready { border-color: var(--accent); background: rgba(14, 165, 233, 0.1); border-width: 2px; }
         .step-btn.ready .step-number { background: var(--accent); color: white; }
+        
         .step-btn.completed { border-color: var(--success); color: var(--success); background: rgba(16, 185, 129, 0.05); }
         .step-btn.completed .step-number { background: var(--success); color: white; }
-        .step-btn.animating { border-color: var(--warning); color: var(--warning); pointer-events: none; }
+        
+        .step-btn.animating { border-color: var(--warning); color: var(--warning); pointer-events: none; opacity: 0.7; }
         .step-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
         .controls-row { display: flex; gap: 10px; margin-top: auto; padding-top: 20px; }
+        
         .action-btn { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.3s; }
+        
         #startBtn { background: var(--success); color: white; display: none; }
-        #startBtn.active { background: #ef4444; }
+        #startBtn.active { background: var(--danger); }
+        
         .reset-btn { background: transparent; border: 1px solid #94a3b8; color: #64748b; }
-        .reset-btn:hover { border-color: #ef4444; color: #ef4444; }
+        .reset-btn:hover { border-color: var(--danger); color: var(--danger); }
     </style>
 </head>
 <body>
@@ -65,139 +88,22 @@
 </div>
 
 <script>
-let gear1Pivot, gear2Pivot, drumPivot;
-let isAnimating = false;
-let currentStepIndex = 0;
-let isRunning = false;
+let gear1Pivot, gear2Pivot, drumPivot, isAnimating = false, currentStepIndex = 0, isRunning = false, isDisassembling = false;
 const parts = {};
 
 const initialPositions = {
-    topframe: new THREE.Vector3(-15, -10.5, 0),
-    drum: new THREE.Vector3(-0.1, 10, 0),
-    drumshaft: new THREE.Vector3(-5.2, -0.9, 20),
-    damperBearing: new THREE.Vector3(-5.45, 0, 15),
-    tray: new THREE.Vector3(-8, 4.5, 18.5),
-    inletpipe: new THREE.Vector3(-8, 4.5, -10),
-    inletpipe2: new THREE.Vector3(-7, 13, 8),
-    outletpipe: new THREE.Vector3(-5, 10, 5.5),
-    motormount: new THREE.Vector3(-6.1, 10, 0),
-    motor: new THREE.Vector3(-6.1, 13.1, 0),
-    motorshaft: new THREE.Vector3(-6.7, 13.7, 0),
-    gear1: new THREE.Vector3(2.5, 4.9, 15),
-    gear2: new THREE.Vector3(0.1, 4.9, 15),
-    door: new THREE.Vector3(10, -5.4, 0)
+    topframe: new THREE.Vector3(-15, -10.5, 0), drum: new THREE.Vector3(-0.1, 10, 0), drumshaft: new THREE.Vector3(-5.2, -0.9, 20),
+    damperBearing: new THREE.Vector3(-5.45, 0, 15), tray: new THREE.Vector3(-8, 4.5, 18.5), inletpipe: new THREE.Vector3(-8, 4.5, -10),
+    inletpipe2: new THREE.Vector3(-7, 13, 8), outletpipe: new THREE.Vector3(-5, 10, 5.5), motormount: new THREE.Vector3(-6.1, 10, 0),
+    motor: new THREE.Vector3(-6.1, 13.1, 0), motorshaft: new THREE.Vector3(-6.7, 13.7, 0), gear1: new THREE.Vector3(2.5, 4.9, 15),
+    gear2: new THREE.Vector3(0.1, 4.9, 15), door: new THREE.Vector3(10, -5.4, 0)
 };
 
 const colors = {
-    damperBearing: 0x333333, 
-    gear1: 0x2d3436,
-    gear2: 0x2d3436,
-    drumshaft: 0x7f8c8d,
-    motormount: 0x111111,    
-    motor: 0x27ae60,
-    motorshaft: 0xbdc3c7,    
-    outletpipe: 0x111111,
-    drum: 0xd1d1d1,
-    inletpipe2: 0x111111,
-    tray: 0x111111,
-    inletpipe: 0x111111,
-    topframe: 0x111111,
-    door: 0xffffff
+    damperBearing: 0x333333, gear1: 0x2d3436, gear2: 0x2d3436, drumshaft: 0x7f8c8d,
+    motormount: 0x111111, motor: 0x27ae60, motorshaft: 0xbdc3c7, outletpipe: 0x111111,
+    drum: 0xd1d1d1, inletpipe2: 0x111111, tray: 0x111111, inletpipe: 0x111111, topframe: 0x111111, door: 0xffffff
 };
-
-const scene = new THREE.Scene();
-// UPDATED: Scene background to Sky Blue
-scene.background = new THREE.Color(0x87ceeb); 
-
-const camera = new THREE.PerspectiveCamera(30, (window.innerWidth*0.75)/window.innerHeight, 0.1, 1000);
-camera.position.set(-15, 20, 50);
-
-const renderer = new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(window.innerWidth * 0.75, window.innerHeight);
-document.getElementById('container3d').appendChild(renderer.domElement);
-
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
-
-// Lighting: Adjusted for lighter background
-scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
-directionalLight.position.set(10, 20, 10);
-scene.add(directionalLight);
-
-const loader = new THREE.GLTFLoader();
-
-loader.load('bodyframe.glb', (gltf) => {
-    const body = gltf.scene;
-    body.scale.set(0.01, 0.01, 0.01);
-    body.position.set(0, -5.4, 0);
-    body.rotation.x = body.rotation.z = Math.PI/2;
-    body.traverse(c => {
-        if(c.isMesh) {
-            c.material = new THREE.MeshStandardMaterial({
-                color: 0xffffff, 
-                transparent: true, 
-                opacity: 0.7, // Slightly higher opacity for visibility on light background
-                roughness: 0.3
-            });
-        }
-    });
-    scene.add(body);
-});
-
-function loadPart(file, name, pos, rot, pivotData = null) {
-    loader.load(file, (gltf) => {
-        let obj = gltf.scene;
-        obj.scale.set(0.01, 0.01, 0.01);
-        
-        obj.traverse(child => {
-            if (child.isMesh) {
-                const isMetallic = (name === 'drum' || name === 'motorshaft' || name === 'drumshaft');
-                const isGlass = (name === 'door');
-
-                child.material = new THREE.MeshStandardMaterial({
-                    color: colors[name],
-                    metalness: isMetallic ? 0.2 : 0.5,
-                    roughness: isMetallic ? 0.5 : 0.8,
-                    transparent: isGlass,
-                    opacity: isGlass ? 0.5 : 0.5 // Increased opacity slightly for the door
-                });
-            }
-        });
-        
-        if(pivotData) {
-            const group = new THREE.Group();
-            group.position.copy(pos);
-            group.add(obj);
-            obj.position.copy(pivotData.meshOffset);
-            obj.rotation.set(pivotData.rotX, 0, pivotData.rotZ);
-            scene.add(group);
-            parts[name] = group;
-            if(name === 'gear1') gear1Pivot = group;
-            if(name === 'gear2') gear2Pivot = group;
-            if(name === 'drum') drumPivot = group;
-        } else {
-            obj.position.copy(pos);
-            obj.rotation.set(rot.x, rot.y, rot.z);
-            scene.add(obj);
-            parts[name] = obj;
-        }
-    });
-}
-
-loadPart('damper_bearing.glb', 'damperBearing', initialPositions.damperBearing, {x: 3*Math.PI/2, y:0, z:0});
-loadPart('gear1.glb', 'gear1', initialPositions.gear1, null, {meshOffset: new THREE.Vector3(6.75, 5.2, 3), rotX: 3*Math.PI/2, rotZ: Math.PI/2});
-loadPart('drumshaft.glb', 'drumshaft', initialPositions.drumshaft, {x: Math.PI/2, y:0, z: 3*Math.PI/2});
-loadPart('motormount.glb', 'motormount', initialPositions.motormount, {x: Math.PI/2, y:0, z: Math.PI/2});
-loadPart('motor.glb', 'motor', initialPositions.motor, {x: Math.PI/2, y:0, z: Math.PI/2});
-loadPart('motorshaft.glb', 'motorshaft', initialPositions.motorshaft, {x: Math.PI/2, y:0, z: Math.PI/2});
-loadPart('gear1.glb', 'gear2', initialPositions.gear2, null, {meshOffset: new THREE.Vector3(6.75, 5.2, 3), rotX: 3*Math.PI/2, rotZ: Math.PI/2});
-loadPart('outletpipe.glb', 'outletpipe', initialPositions.outletpipe, {x: Math.PI, y: 3*Math.PI/2, z: 0});
-loadPart('drum.glb', 'drum', initialPositions.drum, null, {meshOffset: new THREE.Vector3(4.6, -5, -6), rotX: Math.PI/2, rotZ: Math.PI/2});
-loadPart('inletpipe2.glb', 'inletpipe2', initialPositions.inletpipe2, {x: Math.PI, y:0, z:0});
-loadPart('tray.glb', 'tray', initialPositions.tray, {x: 3*Math.PI/2, y:0, z:0});
-loadPart('inletpipe.glb', 'inletpipe', initialPositions.inletpipe, {x: 3*Math.PI/2, y:0, z: 3*Math.PI/2});
-loadPart('topframe.glb', 'topframe', initialPositions.topframe, {x: Math.PI/2, y:0, z: Math.PI/2});
-loadPart('door.glb', 'door', initialPositions.door, {x: Math.PI/2, y:0, z: Math.PI/2});
 
 const assemblyData = [
     { name: "Damper Bearing", target: new THREE.Vector3(-5.45, 0.5, 2), part: 'damperBearing' },
@@ -215,6 +121,68 @@ const assemblyData = [
     { name: "Safety Door", target: new THREE.Vector3(0, -5.4, 0), part: 'door' }
 ];
 
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb); 
+
+const camera = new THREE.PerspectiveCamera(30, (window.innerWidth*0.75)/window.innerHeight, 0.1, 1000);
+camera.position.set(-15, 20, 50);
+
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth * 0.75, window.innerHeight);
+document.getElementById('container3d').appendChild(renderer.domElement);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const dLight = new THREE.DirectionalLight(0xffffff, 1.2);
+dLight.position.set(10, 20, 10);
+scene.add(dLight);
+
+const loader = new THREE.GLTFLoader();
+loader.load('bodyframe.glb', (gltf) => {
+    const body = gltf.scene; body.scale.set(0.01, 0.01, 0.01); body.position.set(0, -5.4, 0); body.rotation.x = body.rotation.z = Math.PI/2;
+    body.traverse(c => { if(c.isMesh) c.material = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 }); });
+    scene.add(body);
+});
+
+function loadPart(file, name, pos, rot, pivotData = null) {
+    loader.load(file, (gltf) => {
+        let obj = gltf.scene; obj.scale.set(0.01, 0.01, 0.01);
+        obj.traverse(child => { 
+            if (child.isMesh) { 
+                const isSilver = (name === 'drum' || name === 'motorshaft' || name === 'drumshaft');
+                child.material = new THREE.MeshStandardMaterial({ 
+                    color: colors[name], 
+                    metalness: isSilver ? 0.5 : 0.4, 
+                    roughness: isSilver ? 0.5 : 0.7, 
+                    transparent: name === 'door', 
+                    opacity: name === 'door' ? 0.4 : 1.0 
+                }); 
+            } 
+        });
+        if(pivotData) {
+            const group = new THREE.Group(); group.position.copy(pos); group.add(obj); obj.position.copy(pivotData.meshOffset); obj.rotation.set(pivotData.rotX, 0, pivotData.rotZ);
+            scene.add(group); parts[name] = group;
+            if(name === 'gear1') gear1Pivot = group; if(name === 'gear2') gear2Pivot = group; if(name === 'drum') drumPivot = group;
+        } else { obj.position.copy(pos); obj.rotation.set(rot.x, rot.y, rot.z); scene.add(obj); parts[name] = obj; }
+    });
+}
+
+// Initial Parts Loading
+loadPart('damper_bearing.glb', 'damperBearing', initialPositions.damperBearing, {x: 3*Math.PI/2, y:0, z:0});
+loadPart('gear1.glb', 'gear1', initialPositions.gear1, null, {meshOffset: new THREE.Vector3(6.75, 5.2, 3), rotX: 3*Math.PI/2, rotZ: Math.PI/2});
+loadPart('drumshaft.glb', 'drumshaft', initialPositions.drumshaft, {x: Math.PI/2, y:0, z: 3*Math.PI/2});
+loadPart('motormount.glb', 'motormount', initialPositions.motormount, {x: Math.PI/2, y:0, z: Math.PI/2});
+loadPart('motor.glb', 'motor', initialPositions.motor, {x: Math.PI/2, y:0, z: Math.PI/2});
+loadPart('motorshaft.glb', 'motorshaft', initialPositions.motorshaft, {x: Math.PI/2, y:0, z: Math.PI/2});
+loadPart('gear1.glb', 'gear2', initialPositions.gear2, null, {meshOffset: new THREE.Vector3(6.75, 5.2, 3), rotX: 3*Math.PI/2, rotZ: Math.PI/2});
+loadPart('outletpipe.glb', 'outletpipe', initialPositions.outletpipe, {x: Math.PI, y: 3*Math.PI/2, z: 0});
+loadPart('drum.glb', 'drum', initialPositions.drum, null, {meshOffset: new THREE.Vector3(4.6, -5, -6), rotX: Math.PI/2, rotZ: Math.PI/2});
+loadPart('inletpipe2.glb', 'inletpipe2', initialPositions.inletpipe2, {x: Math.PI, y:0, z:0});
+loadPart('tray.glb', 'tray', initialPositions.tray, {x: 3*Math.PI/2, y:0, z:0});
+loadPart('inletpipe.glb', 'inletpipe', initialPositions.inletpipe, {x: 3*Math.PI/2, y:0, z: 3*Math.PI/2});
+loadPart('topframe.glb', 'topframe', initialPositions.topframe, {x: Math.PI/2, y:0, z: Math.PI/2});
+loadPart('door.glb', 'door', initialPositions.door, {x: Math.PI/2, y:0, z: Math.PI/2});
+
 function renderUI() {
     const container = document.getElementById("stepContainer");
     container.innerHTML = '';
@@ -227,7 +195,7 @@ function renderUI() {
         } else if (index === currentStepIndex) {
             if (isAnimating) {
                 btn.classList.add("animating");
-                btn.innerHTML = `<span class="step-number">...</span> ${isDisassembling ? 'Disassembling...' : 'Assembling...'}`;
+                btn.innerHTML = `<span class="step-number">...</span> ${isDisassembling ? 'Removing...' : 'Installing...'}`;
             } else {
                 btn.classList.add("ready");
                 btn.innerHTML = `<span class="step-number">${index + 1}</span> ${step.name}`;
@@ -243,17 +211,12 @@ function renderUI() {
 
 function runStep(index) {
     if (isAnimating) return;
-    isAnimating = true;
-    renderUI();
+    isAnimating = true; renderUI();
     const data = assemblyData[index];
-    const partObj = parts[data.part];
     function animate() {
-        let finished = moveToTarget(partObj, data.target);
-        if(data.extra) {
-            let extraFinished = moveToTarget(parts[data.extra], data.extraTarget);
-            finished = finished && extraFinished;
-        }
-        if (!finished) { requestAnimationFrame(animate); }
+        let finished = moveToTarget(parts[data.part], data.target);
+        if(data.extra) finished = finished && moveToTarget(parts[data.extra], data.extraTarget);
+        if (!finished) requestAnimationFrame(animate);
         else {
             isAnimating = false; currentStepIndex++;
             if (currentStepIndex >= assemblyData.length) document.getElementById("startBtn").style.display = "block";
@@ -263,40 +226,29 @@ function runStep(index) {
     animate();
 }
 
-let isDisassembling = false;
 function triggerDisassembly() {
     if (isAnimating || currentStepIndex === 0) return;
-    isDisassembling = true;
-    isRunning = false;
+    isDisassembling = true; isRunning = false;
     document.getElementById("startBtn").style.display = "none";
     runNextReverseStep();
 }
 
 function runNextReverseStep() {
     if (currentStepIndex <= 0) { isDisassembling = false; renderUI(); return; }
-    isAnimating = true;
+    isAnimating = true; renderUI();
     const index = currentStepIndex - 1;
     const data = assemblyData[index];
-    const partObj = parts[data.part];
-    const origin = initialPositions[data.part];
-    renderUI();
     function animate() {
-        let finished = moveToTarget(partObj, origin);
-        if(data.extra) {
-            let extraFinished = moveToTarget(parts[data.extra], initialPositions[data.extra]);
-            finished = finished && extraFinished;
-        }
-        if (!finished) { requestAnimationFrame(animate); }
-        else {
-            isAnimating = false; currentStepIndex--;
-            renderUI(); runNextReverseStep();
-        }
+        let finished = moveToTarget(parts[data.part], initialPositions[data.part]);
+        if(data.extra) finished = finished && moveToTarget(parts[data.extra], initialPositions[data.extra]);
+        if (!finished) requestAnimationFrame(animate);
+        else { isAnimating = false; currentStepIndex--; renderUI(); runNextReverseStep(); }
     }
     animate();
 }
 
 function moveToTarget(obj, target) {
-    if (!obj) return false;
+    if (!obj) return true;
     obj.position.lerp(target, 0.1);
     if (obj.position.distanceTo(target) < 0.01) { obj.position.copy(target); return true; }
     return false;
@@ -316,8 +268,7 @@ function animateScene() {
         if (gear2Pivot) gear2Pivot.rotation.z -= 0.05;
         if (drumPivot) drumPivot.rotation.z += 0.05;
     }
-    controls.update();
-    renderer.render(scene, camera);
+    controls.update(); renderer.render(scene, camera);
 }
 
 window.addEventListener('resize', () => {
@@ -326,8 +277,7 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth * 0.75, window.innerHeight);
 });
 
-renderUI();
-animateScene();
+renderUI(); animateScene();
 </script>
 </body>
 </html>
