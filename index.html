@@ -207,20 +207,21 @@ const assemblyData = [
 
 const colors = {
     damperBearing: 0x4b5563, // Dark Iron
-    gear1:         0xff0000, // Light Steel Driven Gear
-    gear2:         0xffff00, // Light Steel Pinion Gear
-    drumshaft:     0x00ff00, // Polished Stainless Spindle
+    gear1:         0xff0000, // Driven Gear Red
+    gear2:         0xffff00, // Pinion Gear Yellow
+    drumshaft:     0x00ff00, // Drive Spindle Green
     motormount:    0x374151, // Charcoal Bracket
     motor:         0x0284c7, // Industrial Blue Motor
     motorshaft:    0xe2e8f0, // Bright Steel Rotor
     outletpipe:    0x1f2937, // Matte Rubber Drain Hose
     drum:          0xcbd5e1, // Brushed Zinc Wash Drum
-    tray:          0xbe185d, // ABS White Dispenser Drawer
+    tray:          0xbe185d, // ABS Dark Pink Dispenser Drawer
     inletpipe2:    0x1d4ed8, // Rubber Bypass Hose
     inletpipe:     0x1d4ed8, // Rubber Inlet Valve
-    topframe:      0x000000, // Appliance White Top Brace
+    topframe:      0x000000, // Appliance Black Top Brace
     door:          0xffffff  // Transparent Access Door
 };
+
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb); 
 const camera = new THREE.PerspectiveCamera(30, (window.innerWidth*0.75)/window.innerHeight, 0.1, 1000);
@@ -243,9 +244,9 @@ loader.load('bodyframe.glb', (gltf) => {
     
     body.traverse(c => { 
         if(c.isMesh) c.material = new THREE.MeshStandardMaterial({ 
-            color: 0xd1d5db, // <-- CHANGE THIS HEX CODE (e.g., 0xd1d5db for Industrial Gray)
+            color: 0xd1d5db, 
             transparent: true, 
-            opacity: 0.5  // Sightly dropped to 0.5 to make internal gears even more visible
+            opacity: 0.5 
         }); 
     });
     scene.add(body);
@@ -255,14 +256,26 @@ function loadPart(file, name, pos, rot, pivotData = null) {
     loader.load(file, (gltf) => {
         let obj = gltf.scene; obj.scale.set(0.01, 0.01, 0.01);
         obj.traverse(child => { if (child.isMesh) { const isSilver = (name === 'drum' || name === 'motorshaft' || name === 'drumshaft'); child.material = new THREE.MeshStandardMaterial({ color: colors[name], metalness: isSilver ? 0.5 : 0.4, roughness: isSilver ? 0.1 : 0.7, transparent: name === 'door', opacity: name === 'door' ? 0.4 : 1.0 }); } });
+        
+        let targetGroup;
         if(pivotData) {
             const group = new THREE.Group(); group.position.copy(pos); group.add(obj); obj.position.copy(pivotData.meshOffset); obj.rotation.set(pivotData.rotX, 0, pivotData.rotZ);
-            scene.add(group); parts[name] = group;
+            scene.add(group); parts[name] = group; targetGroup = group;
             if(name === 'gear1') gear1Pivot = group; if(name === 'gear2') gear2Pivot = group; if(name === 'drum') drumPivot = group;
-        } else { obj.position.copy(pos); obj.rotation.set(rot.x, rot.y, rot.z); scene.add(obj); parts[name] = obj; }
+        } else { obj.position.copy(pos); obj.rotation.set(rot.x, rot.y, rot.z); scene.add(obj); parts[name] = obj; targetGroup = obj; }
+
+        // --- THE FIX ---
+        // Find if this specific part belongs to a step that has already been assembled
+        const stepIndex = assemblyData.findIndex(step => step.part === name || step.extra === name);
+        if (stepIndex !== -1 && currentStepIndex > stepIndex) {
+            targetGroup.visible = true; // Stay visible if the user clicked ahead while downloading
+        } else {
+            targetGroup.visible = false; // Hide if it hasn't been assembled yet
+        }
     });
 }
 
+// Kick off loading files
 loadPart('damper_bearing.glb', 'damperBearing', initialPositions.damperBearing, {x: 3*Math.PI/2, y:0, z:0});
 loadPart('gear1.glb', 'gear1', initialPositions.gear1, null, {meshOffset: new THREE.Vector3(6.75, 5.2, 3), rotX: 3*Math.PI/2, rotZ: Math.PI/2});
 loadPart('drumshaft.glb', 'drumshaft', initialPositions.drumshaft, {x: Math.PI/2, y:0, z: 3*Math.PI/2});
@@ -292,16 +305,13 @@ function renderUI() {
             btn.classList.add("completed");
             btn.innerHTML = `<span class="step-number">✓</span> ${step.name}`;
             
-            // LOGIC FOR DISASSEMBLY MODE
             if ((currentStepIndex === 13 || isTeardownStarted) && index === currentStepIndex - 1) {
                 if (isAnimating) {
                     btn.classList.add("animating");
-                } else if (!isRunning) { // Only show disassembly if motor is not spinning
+                } else if (!isRunning) {
                     btn.classList.remove("completed");
                     btn.classList.add("active-backward");
                     btn.onclick = () => runAnimation(index, true); 
-                    
-                    // This sets the top instruction bar for teardown
                     statusText.innerHTML = `Click on <b>Step ${index+1}</b> to <i>Disassemble</i> <b>${step.name}</b>`;
                 }
             }
@@ -325,25 +335,21 @@ function renderUI() {
         container.appendChild(btn);
     });
 
-    // START/STOP Logic
     if(currentStepIndex === 13 && !isTeardownStarted) {
         startBtn.style.display = "block";
         startBtn.classList.remove('reset-mode');
         startBtn.innerText = isRunning ? "Stop Motor" : "Start Motor";
         
-        // If motor is running, show stop instruction
         if (isRunning) {
             statusText.innerHTML = `<span class="motor-msg" style="color: var(--danger)">Click STOP BUTTON to stop the washing machine</span>`;
         } 
-        // If motor has run and is now stopped, show your specific disassembly instruction
         else if (hasRunMotor) {
-            statusText.innerHTML = `Click <b>Step 13</b> to <i>Disassemble</i> <b>Safety Door</b>`;
+            statusText.innerHTML = `Click <b>Step 13</b> to <i>Disassemble</i> <b>Access Door</b>`;
         }
         else {
             statusText.innerHTML = `<span class="motor-msg">Click START BUTTON to start the washing machine</span>`;
         }
     } 
-    // RESET Logic
     else if (currentStepIndex === 0 && isTeardownStarted) {
         startBtn.style.display = "block";
         startBtn.classList.add('reset-mode');
@@ -354,11 +360,16 @@ function renderUI() {
         startBtn.style.display = "none";
     }
 }
+
 function resetSimulation() {
     currentStepIndex = 0;
     isTeardownStarted = false;
     hasRunMotor = false;
     isRunning = false;
+    
+    for (let key in parts) {
+        if (parts[key]) parts[key].visible = false;
+    }
     renderUI();
 }
 
@@ -370,17 +381,31 @@ function runAnimation(index, isReverse) {
     const data = assemblyData[index];
     const target = isReverse ? initialPositions[data.part] : data.target;
     const extraTarget = isReverse ? initialPositions[data.extra] : data.extraTarget;
+    
+    if (!isReverse) {
+        if (parts[data.part]) parts[data.part].visible = true;
+        if (data.extra && parts[data.extra]) parts[data.extra].visible = true;
+    }
+    
     function animate() {
         let done = moveTo(parts[data.part], target);
         if(data.extra) done &= moveTo(parts[data.extra], extraTarget);
         if (!done) { requestAnimationFrame(animate); } 
-        else { isAnimating = false; currentStepIndex += isReverse ? -1 : 1; renderUI(); }
+        else { 
+            if (isReverse) {
+                if (parts[data.part]) parts[data.part].visible = false;
+                if (data.extra && parts[data.extra]) parts[data.extra].visible = false;
+            }
+            isAnimating = false; 
+            currentStepIndex += isReverse ? -1 : 1; 
+            renderUI(); 
+        }
     }
     animate();
 }
 
 function moveTo(obj, target) {
-    if (!obj) return true;
+    if (!obj) return true; // If file isn't loaded yet, don't crash, consider it done moving
     obj.position.lerp(target, 0.1);
     if (obj.position.distanceTo(target) < 0.01) { obj.position.copy(target); return true; }
     return false;
