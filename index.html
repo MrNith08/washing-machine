@@ -190,27 +190,37 @@ const initialPositions = {
 };
 
 const assemblyData = [
-    { name: "Damper Bearing", target: new THREE.Vector3(-5.45, 0.5, 2), part: 'damperBearing' },
-    { name: "Main Gear", target: new THREE.Vector3(-4.4, -0.1, 2), part: 'gear1' },
-    { name: "Drum Shaft", target: new THREE.Vector3(-5.2, -0.9, 5.1), part: 'drumshaft' },
-    { name: "Motor Mount", target: new THREE.Vector3(-6.1, -2.5, 0), part: 'motormount' },
-    { name: "Electric Motor", target: new THREE.Vector3(-6.1, -1.1, 0), part: 'motor', extra: 'motorshaft', extraTarget: new THREE.Vector3(-6.7, -0.5, 0) },
-    { name: "Drive Gear", target: new THREE.Vector3(-6.8, -0.1, 2), part: 'gear2' },
-    { name: "Inner Drum", target: new THREE.Vector3(-4.7, -0.3, 6), part: 'drum' },
-    { name: "Outlet Pipe", target: new THREE.Vector3(-5, -2.7, 5.5), part: 'outletpipe' },
-    { name: "Detergent Tray", target: new THREE.Vector3(-8, 4.5, 9.1), part: 'tray' },
-    { name: "Secondary Inlet", target: new THREE.Vector3(-7, 4, 8), part: 'inletpipe2' },
-    { name: "Main Inlet Pipe", target: new THREE.Vector3(-8, 4.5, -0.05), part: 'inletpipe' },
-    { name: "Top Frame", target: new THREE.Vector3(0,-10.5,0), part: 'topframe' },
-    { name: "Safety Door", target: new THREE.Vector3(0, -5.4, 0), part: 'door' }
+    { name: "Bearing Hub", target: new THREE.Vector3(-5.45, 0.5, 2), part: 'damperBearing' },
+    { name: "Driven Gear", target: new THREE.Vector3(-4.4, -0.1, 2), part: 'gear1' },
+    { name: "Drive Spindle", target: new THREE.Vector3(-5.2, -0.9, 5.1), part: 'drumshaft' },
+    { name: "Motor Bracket", target: new THREE.Vector3(-6.1, -2.5, 0), part: 'motormount' },
+    { name: "Drive Motor", target: new THREE.Vector3(-6.1, -1.1, 0), part: 'motor', extra: 'motorshaft', extraTarget: new THREE.Vector3(-6.7, -0.5, 0) },
+    { name: "Pinion Gear", target: new THREE.Vector3(-6.8, -0.1, 2), part: 'gear2' },
+    { name: "Wash Drum", target: new THREE.Vector3(-4.7, -0.3, 6), part: 'drum' },
+    { name: "Drain Hose", target: new THREE.Vector3(-5, -2.7, 5.5), part: 'outletpipe' },
+    { name: "Dispenser Drawer", target: new THREE.Vector3(-8, 4.5, 9.1), part: 'tray' },
+    { name: "Bypass Hose", target: new THREE.Vector3(-7, 4, 8), part: 'inletpipe2' },
+    { name: "Inlet Valve", target: new THREE.Vector3(-8, 4.5, -0.05), part: 'inletpipe' },
+    { name: "Top Brace", target: new THREE.Vector3(0,-10.5,0), part: 'topframe' },
+    { name: "Access Door", target: new THREE.Vector3(0, -5.4, 0), part: 'door' }
 ];
 
 const colors = {
-    damperBearing: 0x333333, gear1: 0x2d3436, gear2: 0x2d3436, drumshaft: 0x7f8c8d,
-    motormount: 0x111111, motor: 0x27ae60, motorshaft: 0xbdc3c7, outletpipe: 0x111111,
-    drum: 0xd1d1d1, inletpipe2: 0x111111, tray: 0x111111, inletpipe: 0x111111, topframe: 0x111111, door: 0xffffff
+    damperBearing: 0x4b5563, // Dark Iron
+    gear1:         0x94a3b8, // Light Steel Driven Gear
+    gear2:         0x94a3b8, // Light Steel Pinion Gear
+    drumshaft:     0xe2e8f0, // Polished Stainless Spindle
+    motormount:    0x374151, // Charcoal Bracket
+    motor:         0x0284c7, // Industrial Blue Motor
+    motorshaft:    0xe2e8f0, // Bright Steel Rotor
+    outletpipe:    0x1f2937, // Matte Rubber Drain Hose
+    drum:          0xcbd5e1, // Brushed Zinc Wash Drum
+    tray:          0x000000, // ABS White Dispenser Drawer
+    inletpipe2:    0x1f2937, // Rubber Bypass Hose
+    inletpipe:     0x1f2937, // Rubber Inlet Valve
+    topframe:      0x000000, // Appliance White Top Brace
+    door:          0xffffff  // Transparent Access Door
 };
-
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb); 
 const camera = new THREE.PerspectiveCamera(30, (window.innerWidth*0.75)/window.innerHeight, 0.1, 1000);
@@ -226,8 +236,18 @@ scene.add(dLight);
 
 const loader = new THREE.GLTFLoader();
 loader.load('bodyframe.glb', (gltf) => {
-    const body = gltf.scene; body.scale.set(0.01, 0.01, 0.01); body.position.set(0, -5.4, 0); body.rotation.x = body.rotation.z = Math.PI/2;
-    body.traverse(c => { if(c.isMesh) c.material = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 }); });
+    const body = gltf.scene; 
+    body.scale.set(0.01, 0.01, 0.01); 
+    body.position.set(0, -5.4, 0); 
+    body.rotation.x = body.rotation.z = Math.PI/2;
+    
+    body.traverse(c => { 
+        if(c.isMesh) c.material = new THREE.MeshStandardMaterial({ 
+            color: 0xd1d5db, // <-- CHANGE THIS HEX CODE (e.g., 0xd1d5db for Industrial Gray)
+            transparent: true, 
+            opacity: 0.5  // Sightly dropped to 0.5 to make internal gears even more visible
+        }); 
+    });
     scene.add(body);
 });
 
